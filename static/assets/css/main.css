@@ -114,7 +114,7 @@ main:focus { outline: none; }
 
 /* ---------- logo ---------- */
 .logo { display: inline-flex; align-items: center; gap: .6rem; line-height: 1; }
-.logo-mark { width: 43px; height: 38px; flex: none; }
+.logo-mark { width: 49px; height: 38px; flex: none; }
 .logo-text { display: flex; flex-direction: column; gap: 3px; }
 .logo-name { font-family: var(--font-head); font-weight: 700; font-size: 1.45rem; letter-spacing: -.03em; color: var(--forest); }
 .logo-sub { font-size: .56rem; letter-spacing: .34em; text-transform: uppercase; color: var(--emerald); font-weight: 600; padding-left: 1px; }
