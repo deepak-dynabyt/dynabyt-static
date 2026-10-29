@@ -12,6 +12,14 @@
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
 
+  /* ---- pause looping animations while off screen (keeps scrolling smooth) ---- */
+  if ('IntersectionObserver' in window && !reduce) {
+    var anim = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { e.target.classList.toggle('anim-off', !e.isIntersecting); });
+    }, { rootMargin: '80px 0px' });
+    $$('.hero, .cta-band, .page-hero, .case-hero').forEach(function (el) { anim.observe(el); });
+  }
+
   /* ---- mobile menu ---- */
   var menuBtn = $('.menu-btn'), menu = $('#mobile-menu');
   function setMenu(open) {
