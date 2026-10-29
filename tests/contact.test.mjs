@@ -38,4 +38,16 @@ t('email goes to deepak.hubspot@gmail.com by default', mail.body.to.length === 1
 t('reply-to is the visitor', mail.body.reply_to === 'jane@example.com');
 t('Resend key sent as bearer, not in body', mail.init.headers.authorization === 'Bearer re_test' && !JSON.stringify(mail.body).includes('re_test'));
 r = await call(good, { RESEND_API_KEY: 're_test', MAIL_TO: 'other@example.com' }); t('MAIL_TO overrides recipient', mail.body.to[0] === 'other@example.com');
+// Supabase storage
+let sb; globalThis.fetch = async (u, init) => { sb = { u: String(u), init, body: JSON.parse(init.body) }; return new Response('', { status: 201 }); };
+r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co/', SUPABASE_SERVICE_KEY: 'svc_key' });
+t('Supabase-only = success', r.s === 200 && sb.u === 'https://abc.supabase.co/rest/v1/enquiries');
+t('Supabase row has the enquiry fields', sb.body.email === 'jane@example.com' && sb.body.service === 'AI Automation' && sb.body.consent === true && sb.body.ip_hash.length === 16);
+t('Supabase key sent in headers only', sb.init.headers.apikey === 'svc_key' && !JSON.stringify(sb.body).includes('svc_key'));
+t('no raw IP in Supabase row', !JSON.stringify(sb.body).includes('1.2.3.4'));
+globalThis.fetch = async () => new Response('{"message":"nope"}', { status: 401 });
+r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE_KEY: 'bad' }); t('Supabase rejects + nothing else = honest 503', r.s === 503);
+let n = 0; globalThis.fetch = async (u) => (String(u).includes('supabase') ? new Response('', { status: 500 }) : new Response('{}', { status: 200 }));
+r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE_KEY: 'k', RESEND_API_KEY: 're' }); t('Supabase down but email ok (non-strict) = success', r.s === 200);
+r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE_KEY: 'k', RESEND_API_KEY: 're', DELIVERY_STRICT: 'true' }); t('Supabase down + strict = 503', r.s === 503);
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

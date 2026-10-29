@@ -22,6 +22,8 @@ Then, in the project's Settings:
 | Name | Type | Purpose |
 |---|---|---|
 | `RESEND_API_KEY` | **Secret** | Turns on the email to `deepak.hubspot@gmail.com` (see below) |
+| `SUPABASE_URL` | Text | Your Supabase Project URL, e.g. `https://abcd1234.supabase.co`. Saves every enquiry to the `enquiries` table (see below) |
+| `SUPABASE_SERVICE_KEY` | **Secret** | Supabase `service_role` key. Never put it in the repo, the browser or a build variable |
 | `MAIL_TO` | Secret or text | Optional. Overrides the default recipient. Comma-separate for several |
 | `MAIL_FROM` | Text | Optional sender, e.g. `Dynabyt <website@yourdomain.com>` once your domain is verified in Resend |
 | `WEBHOOK_URL`, `WEBHOOK_SECRET` | Secret | Optional. Also POST each enquiry to n8n, Make, Zapier or your CRM |
@@ -33,6 +35,15 @@ Then, in the project's Settings:
 3. **Save every enquiry (recommended):** create a KV namespace (Storage & databases → KV → Create) named `SUBMISSIONS`. Open `wrangler.jsonc`, uncomment the `kv_namespaces` line and paste its id, then commit. Enquiries then appear in that namespace even if email fails.
 
 Using Cloudflare Pages instead? Create a Pages project with build command `node build.cjs` and output directory `dist`. `functions/api/contact.js` is picked up automatically and `SUBMISSIONS` is added under Settings → Bindings.
+
+## Save enquiries in Supabase
+
+1. In your Supabase project open **SQL Editor**, paste the contents of `supabase/enquiries.sql` and run it. This creates the `enquiries` table with row-level security on, so the public key cannot read or write it.
+2. In Supabase go to Project Settings → API. Copy the **Project URL** and the **service_role** key.
+3. In Cloudflare, Settings → Variables and Secrets (runtime): add `SUPABASE_URL` as Text and `SUPABASE_SERVICE_KEY` as a **Secret**, then Deploy.
+4. Submit a test enquiry. It appears in Supabase under Table Editor → `enquiries`.
+
+The visitor sees success only if the row was saved or an email was delivered. If Supabase rejects the insert, the reason (status and message, never the key) is written to Workers Logs.
 
 ## Email to deepak.hubspot@gmail.com
 

@@ -85,6 +85,19 @@ async function deliver(env, rec) {
   return out;
 }
 
+// Saves the enquiry as a row in the Supabase table "enquiries" (see supabase/enquiries.sql).
+// Uses the service key, which only ever lives in Cloudflare as a secret.
+const supabaseConfigured = (env) => !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY);
+async function saveToSupabase(env, rec) {
+  const f = rec.fields;
+  return tryFetch(env.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/enquiries', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', apikey: env.SUPABASE_SERVICE_KEY, authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY, prefer: 'return=minimal' },
+    body: JSON.stringify({ id: rec.id, received_at: rec.received_at, name: f.name, email: f.email, company: f.company, website: f.website || null,
+      service: f.service, budget: f.budget || null, timeline: f.timeline || null, message: f.message, consent: true, page: rec.page, ip_hash: rec.ip_hash, user_agent: rec.user_agent }),
+  }, 'supabase');
+}
+
 async function rateLimited(env, ip) {
   if (!env.SUBMISSIONS) return false;
   const limit = parseInt(env.RATE_LIMIT_PER_HOUR || '5', 10);
@@ -135,17 +148,19 @@ export async function onRequestPost({ request, env }) {
 
   const idBytes = crypto.getRandomValues(new Uint8Array(5));
   const id = [...idBytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-  if (!env.RESEND_API_KEY && !env.SUBMISSIONS && !env.WEBHOOK_URL && !(env.HUBSPOT_PORTAL_ID && env.HUBSPOT_FORM_GUID)) console.error('[contact] No delivery channel configured: RESEND_API_KEY is not set on this Worker (add it as a runtime Secret, then redeploy). Variables this Worker can see: ' + (Object.keys(env).join(', ') || '(none)'));
+  if (!env.RESEND_API_KEY && !env.SUBMISSIONS && !supabaseConfigured(env) && !env.WEBHOOK_URL && !(env.HUBSPOT_PORTAL_ID && env.HUBSPOT_FORM_GUID)) console.error('[contact] No delivery channel configured: RESEND_API_KEY is not set on this Worker (add it as a runtime Secret, then redeploy). Variables this Worker can see: ' + (Object.keys(env).join(', ') || '(none)'));
   const rec = { id, received_at: new Date().toISOString(), page: url.origin + '/contact', fields: clean, consent: true, ip_hash: (await sha256Hex(ip)).slice(0, 16), user_agent: (request.headers.get('user-agent') || '').slice(0, 200) };
 
   let stored = false;
   if (env.SUBMISSIONS) { try { await env.SUBMISSIONS.put('sub:' + rec.received_at + ':' + id, JSON.stringify(rec)); stored = true; } catch {} }
+  if (supabaseConfigured(env) && (await saveToSupabase(env, rec))) stored = true;
   const remote = await deliver(env, rec);
   const channels = Object.values(remote);
   const anyRemote = channels.some(Boolean);
   const strict = flag(env.DELIVERY_STRICT);
-  const configured = !!env.SUBMISSIONS || channels.length > 0;
-  const success = strict ? (!env.SUBMISSIONS || stored) && channels.every(Boolean) && configured : stored || anyRemote;
+  const storageConfigured = !!env.SUBMISSIONS || supabaseConfigured(env);
+  const configured = storageConfigured || channels.length > 0;
+  const success = strict ? (!storageConfigured || stored) && channels.every(Boolean) && configured : stored || anyRemote;
 
   if (success) {
     const first = clean.name.split(' ')[0];
