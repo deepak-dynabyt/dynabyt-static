@@ -8,7 +8,9 @@
     "binding": "ASSETS",
     "not_found_handling": "404-page",
     "run_worker_first": ["/api/*"]
-  }
+  },
+  // Keep Workers Logs on so delivery problems from the contact form are visible (Observability > Logs).
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
   // To also save every enquiry (recommended), create a KV namespace named SUBMISSIONS in the dashboard,
   // then uncomment this and paste its id:
   // , "kv_namespaces": [{ "binding": "SUBMISSIONS", "id": "PASTE_NAMESPACE_ID" }]
