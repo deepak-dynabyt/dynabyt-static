@@ -1,0 +1,41 @@
+// node tests/contact.test.mjs   (Node 20+; no dependencies)
+import { onRequestPost } from '../functions/api/contact.js';
+let pass = 0, fail = 0;
+const t = (n, ok) => { ok ? pass++ : fail++; console.log((ok ? '  ok    ' : '  FAIL  ') + n); };
+const kv = () => { const m = new Map(); return { m, get: async (k) => m.get(k) ?? null, put: async (k, v) => { m.set(k, v); } }; };
+const good = { name: 'Jane Doe', email: 'jane@example.com', company: 'Acme', website: 'acme.com', service: 'AI Automation', message: 'We need to automate lead intake from forms into HubSpot.', consent: '1', company_website: '', form_token: String(Date.now() - 10000) };
+const call = async (fields, env = {}, headers = {}) => {
+  const fd = new FormData(); for (const [k, v] of Object.entries(fields)) if (v !== undefined) fd.append(k, v);
+  const r = await onRequestPost({ request: new Request('https://site.test/api/contact', { method: 'POST', body: fd, headers: { accept: 'application/json', 'cf-connecting-ip': '1.2.3.4', ...headers } }), env });
+  return { s: r.status, j: await r.json() };
+};
+let k = kv(), r = await call(good, { SUBMISSIONS: k });
+t('valid + KV stored = 200 ok', r.s === 200 && r.j.ok && [...k.m.keys()].some((x) => x.startsWith('sub:')));
+t('stored record has no raw IP', ![...k.m.values()].some((v) => v.includes('1.2.3.4')));
+r = await call(good, {}); t('nothing configured = honest 503, not success', r.s === 503 && !r.j.ok);
+r = await call({ ...good, name: 'A', email: 'bad', company: '', service: 'x', message: 'short', consent: undefined }, { SUBMISSIONS: kv() });
+t('invalid input = 422 with field errors', r.s === 422 && ['name', 'email', 'company', 'service', 'message', 'consent'].every((f) => r.j.errors[f]));
+k = kv(); r = await call({ ...good, company_website: 'spam' }, { SUBMISSIONS: k }); t('honeypot = silent success, nothing stored', r.s === 200 && k.m.size === 0);
+r = await call({ ...good, form_token: String(Date.now()) }, { SUBMISSIONS: kv() }); t('too fast = 400', r.s === 400);
+r = await call({ ...good, form_token: undefined }, { SUBMISSIONS: kv() }); t('missing token = 400', r.s === 400);
+r = await call({ ...good, form_token: String(Date.now() - 3 * 3600000) }, { SUBMISSIONS: kv() }); t('expired token = 400', r.s === 400);
+r = await call(good, { SUBMISSIONS: kv() }, { origin: 'https://evil.test' }); t('foreign origin = 400', r.s === 400);
+r = await call({ ...good, email: 'a@b.com\r\nBcc: x@evil.com' }, { SUBMISSIONS: kv() }); t('CRLF email rejected', r.s === 422 && r.j.errors.email);
+k = kv(); let last; for (let i = 0; i < 7; i++) last = await call(good, { SUBMISSIONS: k }); t('rate limit after 5 = 429', last.s === 429);
+// webhook delivery + signature, no KV
+let seen; globalThis.fetch = async (u, init) => { seen = { u: String(u), init }; return new Response('ok', { status: 200 }); };
+r = await call(good, { WEBHOOK_URL: 'https://hooks.test/x', WEBHOOK_SECRET: 's3cret' });
+t('webhook-only delivery = success', r.s === 200 && seen.u === 'https://hooks.test/x');
+t('webhook signed', /^sha256=[0-9a-f]{64}$/.test(seen.init.headers['X-Dynabyt-Signature']));
+globalThis.fetch = async () => new Response('no', { status: 500 });
+r = await call(good, { WEBHOOK_URL: 'https://hooks.test/x' }); t('webhook failing + no KV = 503', r.s === 503);
+k = kv(); r = await call(good, { SUBMISSIONS: k, WEBHOOK_URL: 'https://hooks.test/x' }); t('stored but webhook fails (non-strict) = success', r.s === 200);
+r = await call(good, { SUBMISSIONS: kv(), WEBHOOK_URL: 'https://hooks.test/x', DELIVERY_STRICT: 'true' }); t('strict + webhook fails = 503', r.s === 503);
+let mail; globalThis.fetch = async (u, init) => { mail = { u: String(u), init, body: JSON.parse(init.body) }; return new Response('{}', { status: 200 }); };
+r = await call(good, { RESEND_API_KEY: 're_test' });
+t('email via Resend = success', r.s === 200 && mail.u === 'https://api.resend.com/emails');
+t('email goes to deepak.hubspot@gmail.com by default', mail.body.to.length === 1 && mail.body.to[0] === 'deepak.hubspot@gmail.com');
+t('reply-to is the visitor', mail.body.reply_to === 'jane@example.com');
+t('Resend key sent as bearer, not in body', mail.init.headers.authorization === 'Bearer re_test' && !JSON.stringify(mail.body).includes('re_test'));
+r = await call(good, { RESEND_API_KEY: 're_test', MAIL_TO: 'other@example.com' }); t('MAIL_TO overrides recipient', mail.body.to[0] === 'other@example.com');
+console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
