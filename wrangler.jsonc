@@ -3,6 +3,8 @@
   "name": "dynabyt-static",
   "main": "worker.js",
   "compatibility_date": "2025-09-01",
+  // Keep variables and secrets added in the Cloudflare dashboard when this config is deployed.
+  "keep_vars": true,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

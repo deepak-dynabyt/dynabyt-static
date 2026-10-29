@@ -135,7 +135,7 @@ export async function onRequestPost({ request, env }) {
 
   const idBytes = crypto.getRandomValues(new Uint8Array(5));
   const id = [...idBytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-  if (!env.RESEND_API_KEY && !env.SUBMISSIONS && !env.WEBHOOK_URL && !(env.HUBSPOT_PORTAL_ID && env.HUBSPOT_FORM_GUID)) console.error('[contact] No delivery channel configured: RESEND_API_KEY is not set on this Worker (add it as a runtime Secret, then redeploy).');
+  if (!env.RESEND_API_KEY && !env.SUBMISSIONS && !env.WEBHOOK_URL && !(env.HUBSPOT_PORTAL_ID && env.HUBSPOT_FORM_GUID)) console.error('[contact] No delivery channel configured: RESEND_API_KEY is not set on this Worker (add it as a runtime Secret, then redeploy). Variables this Worker can see: ' + (Object.keys(env).join(', ') || '(none)'));
   const rec = { id, received_at: new Date().toISOString(), page: url.origin + '/contact', fields: clean, consent: true, ip_hash: (await sha256Hex(ip)).slice(0, 16), user_agent: (request.headers.get('user-agent') || '').slice(0, 200) };
 
   let stored = false;
