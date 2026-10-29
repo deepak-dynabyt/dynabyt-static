@@ -566,3 +566,8 @@ main:focus { outline: none; }
 .anim-off *, .anim-off *::before, .anim-off *::after { animation-play-state: paused !important; }
 .js .reveal { will-change: opacity, transform; }
 .js .reveal.in { will-change: auto; }
+
+/* compact case-study cards (home page) */
+.project-brief { color: var(--gray); font-size: .98rem; line-height: 1.6; margin: .6rem 0 1.2rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.project-card--compact .project-body { padding-bottom: 1.4rem; }
+.project-card--compact .text-link { margin-top: auto; }
