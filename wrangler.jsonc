@@ -5,6 +5,8 @@
   "compatibility_date": "2025-09-01",
   // Keep variables and secrets added in the Cloudflare dashboard when this config is deployed.
   "keep_vars": true,
+  // Public values only. Keys and passwords (RESEND_API_KEY, SUPABASE_SERVICE_KEY) stay as dashboard Secrets.
+  "vars": { "SUPABASE_URL": "https://ocwykdiqtbewogfsiojw.supabase.co" },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
