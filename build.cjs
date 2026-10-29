@@ -6,9 +6,9 @@ const PLACE = 'SITE_URL_PLACEHOLDER';
 
 let site = (process.env.SITE_URL || '').trim().replace(/\/+$/, '');
 if (!site && process.env.CF_PAGES_URL) site = process.env.CF_PAGES_URL.replace(/\/+$/, '');
-if (!site) { console.error('Set the SITE_URL environment variable (for example https://www.example.com).'); process.exit(1); }
-if (!/^https?:\/\//.test(site)) site = 'https://' + site;
+if (site && !/^https?:\/\//.test(site)) site = 'https://' + site;
 const host = site.replace(/^https?:\/\//, '');
+if (!site) console.warn('WARNING: SITE_URL is not set. Canonical links, sitemap and share tags will be relative until you set it\n(Build variables: SITE_URL=https://www.yourdomain.com) and redeploy.');
 
 fs.rmSync(dist, { recursive: true, force: true });
 const textExt = new Set(['.html', '.xml', '.txt', '.json', '.svg']);
@@ -22,4 +22,4 @@ const textExt = new Set(['.html', '.xml', '.txt', '.json', '.svg']);
     } else fs.copyFileSync(a, b);
   }
 })(src, dist);
-console.log('Built dist/ for ' + site);
+console.log('Built dist/ for ' + (site || '(no SITE_URL set)'));
