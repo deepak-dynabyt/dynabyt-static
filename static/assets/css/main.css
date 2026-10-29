@@ -355,6 +355,9 @@ main:focus { outline: none; }
 /* ---------- CTA band ---------- */
 .cta-band { padding: clamp(4.5rem, 9vw, 8rem) 0; overflow: hidden; position: relative; }
 .net-bg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .9; pointer-events: none; }
+.net-line { stroke-width: 1.2; stroke-dasharray: 5 9; animation: dash 18s linear infinite; animation-delay: var(--d, 0s); }
+.net-dot { transform-box: fill-box; transform-origin: center; animation: netPulse 5s ease-in-out infinite; animation-delay: var(--d, 0s); }
+@keyframes netPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .45; } }
 .cta-inner { position: relative; }
 .cta-inner > * { max-width: 780px; }
 .cta-inner h2 { font-size: clamp(2.2rem, 4.6vw, 3.6rem); }
@@ -530,7 +533,7 @@ main:focus { outline: none; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   .js .reveal { opacity: 1; transform: none; }
-  .eco-line { stroke-dasharray: none; }
+  .eco-line, .net-line { stroke-dasharray: none; }
 }
 @media print { .site-header, .site-footer, .cta-band, .consent { display: none; } body { background: #fff; } }
 
