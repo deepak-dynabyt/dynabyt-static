@@ -197,6 +197,7 @@ main:focus { outline: none; }
 .hero-visual { position: relative; }
 .eco { width: 100%; height: auto; overflow: visible; }
 .eco-line { stroke: #a8c5ae; stroke-opacity: .5; stroke-width: 1.4; stroke-dasharray: 6 8; animation: dash 16s linear infinite; animation-delay: var(--d); }
+.eco-pulse { transform-box: fill-box; transform-origin: center; animation: pulse 4.5s ease-in-out infinite; }
 .eco-card { animation: floaty 8s ease-in-out infinite; animation-delay: var(--d); }
 .eco-dot { animation: pulse 3.2s ease-in-out infinite; animation-delay: var(--d); transform-box: fill-box; transform-origin: center; }
 .eco-glow { transform-box: fill-box; transform-origin: center; animation: pulse 5s ease-in-out infinite; }
