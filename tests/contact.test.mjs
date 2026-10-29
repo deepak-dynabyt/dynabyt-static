@@ -45,6 +45,10 @@ t('Supabase-only = success', r.s === 200 && sb.u === 'https://abc.supabase.co/re
 t('Supabase row has the enquiry fields', sb.body.email === 'jane@example.com' && sb.body.service === 'AI Automation' && sb.body.consent === true && sb.body.ip_hash.length === 16);
 t('Supabase key sent in headers only', sb.init.headers.apikey === 'svc_key' && !JSON.stringify(sb.body).includes('svc_key'));
 t('no raw IP in Supabase row', !JSON.stringify(sb.body).includes('1.2.3.4'));
+r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE_KEY: 'sb_secret_abc123' });
+t('new sb_secret_ key: apikey only, no Bearer', r.s === 200 && sb.init.headers.apikey === 'sb_secret_abc123' && !sb.init.headers.authorization);
+r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE_KEY: 'eyJhbGciOi.legacy.jwt' });
+t('legacy JWT key: apikey and Bearer', sb.init.headers.authorization === 'Bearer eyJhbGciOi.legacy.jwt');
 globalThis.fetch = async () => new Response('{"message":"nope"}', { status: 401 });
 r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE_KEY: 'bad' }); t('Supabase rejects + nothing else = honest 503', r.s === 503);
 let n = 0; globalThis.fetch = async (u) => (String(u).includes('supabase') ? new Response('', { status: 500 }) : new Response('{}', { status: 200 }));

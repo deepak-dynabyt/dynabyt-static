@@ -92,7 +92,11 @@ async function saveToSupabase(env, rec) {
   const f = rec.fields;
   return tryFetch(env.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/enquiries', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', apikey: env.SUPABASE_SERVICE_KEY, authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY, prefer: 'return=minimal' },
+    headers: {
+      'content-type': 'application/json', apikey: env.SUPABASE_SERVICE_KEY, prefer: 'return=minimal',
+      // Legacy service_role keys are JWTs and also go in Authorization. New sb_secret_ keys are not JWTs: apikey alone is correct.
+      ...(env.SUPABASE_SERVICE_KEY.startsWith('eyJ') ? { authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY } : {}),
+    },
     body: JSON.stringify({ id: rec.id, received_at: rec.received_at, name: f.name, email: f.email, company: f.company, website: f.website || null,
       service: f.service, budget: f.budget || null, timeline: f.timeline || null, message: f.message, consent: true, page: rec.page, ip_hash: rec.ip_hash, user_agent: rec.user_agent }),
   }, 'supabase');
