@@ -42,7 +42,14 @@ async function hmacHex(secret, body) {
   const s = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(body));
   return [...new Uint8Array(s)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
-const tryFetch = async (url, init) => { try { const r = await fetch(url, { ...init, signal: AbortSignal.timeout(10000) }); return r.ok; } catch { return false; } };
+// Returns true on a 2xx response. On failure it logs the status and the provider's reply (never secrets) to Workers Logs.
+const tryFetch = async (url, init, label = 'request') => {
+  try {
+    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) console.error(`[contact] ${label} failed: HTTP ${r.status} ${(await r.text()).slice(0, 300)}`);
+    return r.ok;
+  } catch (e) { console.error(`[contact] ${label} error: ${e && e.message}`); return false; }
+};
 
 async function deliver(env, rec) {
   const f = rec.fields, out = {};
@@ -50,7 +57,7 @@ async function deliver(env, rec) {
     const body = JSON.stringify(rec);
     const headers = { 'content-type': 'application/json' };
     if (env.WEBHOOK_SECRET) headers['X-Dynabyt-Signature'] = 'sha256=' + (await hmacHex(env.WEBHOOK_SECRET, body));
-    out.webhook = await tryFetch(env.WEBHOOK_URL, { method: 'POST', headers, body });
+    out.webhook = await tryFetch(env.WEBHOOK_URL, { method: 'POST', headers, body }, 'webhook');
   }
   if (env.HUBSPOT_PORTAL_ID && env.HUBSPOT_FORM_GUID) {
     const [first, ...rest] = f.name.split(' ');
@@ -63,7 +70,7 @@ async function deliver(env, rec) {
     out.hubspot = await tryFetch(`https://api.hsforms.com/submissions/v3/integration/submit/${encodeURIComponent(env.HUBSPOT_PORTAL_ID)}/${encodeURIComponent(env.HUBSPOT_FORM_GUID)}`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ fields, context: { pageName: 'Contact', pageUri: rec.page }, legalConsentOptions: { consent: { consentToProcess: true, text: 'Visitor agreed to be contacted about this enquiry.' } } }),
-    });
+    }, 'hubspot');
   }
   if (env.RESEND_API_KEY) {
     const to = (env.MAIL_TO || DEFAULT_MAIL_TO).split(',').map((x) => x.trim()).filter(Boolean);
@@ -73,7 +80,7 @@ async function deliver(env, rec) {
     out.email = await tryFetch('https://api.resend.com/emails', {
       method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.RESEND_API_KEY },
       body: JSON.stringify({ from, to, reply_to: f.email, subject: `New enquiry: ${f.service} — ${f.company}`, text }),
-    });
+    }, 'resend email');
   }
   return out;
 }
@@ -128,6 +135,7 @@ export async function onRequestPost({ request, env }) {
 
   const idBytes = crypto.getRandomValues(new Uint8Array(5));
   const id = [...idBytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+  if (!env.RESEND_API_KEY && !env.SUBMISSIONS && !env.WEBHOOK_URL && !(env.HUBSPOT_PORTAL_ID && env.HUBSPOT_FORM_GUID)) console.error('[contact] No delivery channel configured: RESEND_API_KEY is not set on this Worker (add it as a runtime Secret, then redeploy).');
   const rec = { id, received_at: new Date().toISOString(), page: url.origin + '/contact', fields: clean, consent: true, ip_hash: (await sha256Hex(ip)).slice(0, 16), user_agent: (request.headers.get('user-agent') || '').slice(0, 200) };
 
   let stored = false;
