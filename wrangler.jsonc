@@ -5,9 +5,8 @@
   "compatibility_date": "2025-09-01",
   // Keep variables and secrets added in the Cloudflare dashboard when this config is deployed.
   "keep_vars": true,
-  // Public values only. Keys and passwords (RESEND_API_KEY, SUPABASE_SERVICE_KEY) stay as dashboard Secrets.
+  // Public values only. Keys and passwords (RESEND_API_KEY) stay as dashboard Secrets.
   "vars": {
-    "SUPABASE_URL": "https://ocwykdiqtbewogfsiojw.supabase.co",
     "HUBSPOT_PORTAL_ID": "247982629",
     "HUBSPOT_FORM_GUID": "9a869462-8ee8-42c9-b795-8050de070c91"
   },
