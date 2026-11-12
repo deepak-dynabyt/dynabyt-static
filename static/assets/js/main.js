@@ -150,6 +150,9 @@
             form.reset();
             setStatus('ok', res.j.message);
             if (window.gtag) window.gtag('event', 'generate_lead', { method: 'contact_form' });
+            // After a successful enquiry, send the visitor to the booking page (shows the thank-you for a moment first)
+            var next = form.getAttribute('data-redirect');
+            if (/^https:\/\/meetings[\w-]*\.hubspot\.com\//.test(next || '')) setTimeout(function () { location.href = next; }, 1500);
           } else {
             if (res.j && res.j.errors) showErrors(res.j.errors);
             setStatus('err', (res.j && res.j.message) || 'Something went wrong. Please try again.');
