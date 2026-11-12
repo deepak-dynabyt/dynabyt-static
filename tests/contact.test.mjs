@@ -54,4 +54,16 @@ r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE
 let n = 0; globalThis.fetch = async (u) => (String(u).includes('supabase') ? new Response('', { status: 500 }) : new Response('{}', { status: 200 }));
 r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE_KEY: 'k', RESEND_API_KEY: 're' }); t('Supabase down but email ok (non-strict) = success', r.s === 200);
 r = await call(good, { SUPABASE_URL: 'https://abc.supabase.co', SUPABASE_SERVICE_KEY: 'k', RESEND_API_KEY: 're', DELIVERY_STRICT: 'true' }); t('Supabase down + strict = 503', r.s === 503);
+// HubSpot Forms API: tracking cookie passed as hutk, and kept out of the webhook payload
+{
+  const calls = []; globalThis.fetch = async (u, init) => { calls.push({ u: String(u), body: JSON.parse(init.body) }); return new Response('{}', { status: 200 }); };
+  const utk = 'a'.repeat(32);
+  r = await call(good, { HUBSPOT_PORTAL_ID: '123', HUBSPOT_FORM_GUID: 'guid-1', WEBHOOK_URL: 'https://hooks.test/x' }, { cookie: `x=1; hubspotutk=${utk}` });
+  const hs = calls.find((c) => c.u.includes('api.hsforms.com')), wh = calls.find((c) => c.u.includes('hooks.test'));
+  t('HubSpot submission = success, correct endpoint', r.s === 200 && hs.u.endsWith('/submit/123/guid-1'));
+  t('HubSpot gets hutk from the hubspotutk cookie', hs.body.context.hutk === utk);
+  t('webhook payload does not contain hutk', !JSON.stringify(wh.body).includes(utk));
+  calls.length = 0; r = await call(good, { HUBSPOT_PORTAL_ID: '123', HUBSPOT_FORM_GUID: 'guid-1' }, { cookie: 'hubspotutk=not-valid' });
+  t('invalid hubspotutk ignored', !('hutk' in calls[0].body.context));
+}
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
