@@ -66,7 +66,7 @@ async function deliver(env, rec) {
       { name: 'firstname', value: first }, { name: 'lastname', value: rest.join(' ') }, { name: 'email', value: f.email },
       { name: 'company', value: f.company }, f.website && { name: 'website', value: f.website },
       { name: 'service_required', value: f.service }, f.budget && { name: 'project_budget_range', value: f.budget },
-      f.timeline && { name: 'project_timeline', value: f.timeline }, { name: 'message', value: f.message },
+      f.timeline && { name: 'project_timeline', value: f.timeline }, { name: 'brief_project_description', value: f.message }, // the HubSpot form's required "Brief project description" field
     ].filter(Boolean);
     out.hubspot = await tryFetch(`https://api.hsforms.com/submissions/v3/integration/submit/${encodeURIComponent(env.HUBSPOT_PORTAL_ID)}/${encodeURIComponent(env.HUBSPOT_FORM_GUID)}`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
